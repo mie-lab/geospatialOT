@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "geot"
 version = "0.1.0"
-description = "Optimal Transport-based metrics for evaluating spatiotemporal predictions"
+description = "Optimal Transport metrics for evaluating spatiotemporal predictions"
 authors = [{name="MIE Lab"}, {name="Nina Wiedemann"}]
 license = { file = "LICENSE" }
 readme = "README.md"

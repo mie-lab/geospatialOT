@@ -12,15 +12,6 @@ __pycache__/
 # project specific
 *.sh
 deprecated.py
-backups/
-spatial_multi_scale_1D/
-paper/
-data/
-paper_sigspatial/
-outputs/
-trained_models/
-figures/
-*.ipynb
 
 # Distribution / packaging
 .Python
