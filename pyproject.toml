@@ -9,11 +9,14 @@ description = "Optimal Transport metrics for evaluating spatiotemporal predictio
 authors = [{name="MIE Lab"}, {name="Nina Wiedemann"}]
 license = { file = "LICENSE" }
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 keywords = ["geographic", "geospatial", "optimal transport", "spatiotemporal", "metrics", "evaluation"]
-dependencies = ["torch", "geomloss", "numpy"]
+dependencies = ["torch", "geomloss", "numpy", "pytest", "wasserstein", "scipy", "matplotlib", "pandas", "POT", "notebook"]
+
+[tool.setuptools.packages]
+find = {}

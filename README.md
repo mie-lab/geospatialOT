@@ -16,6 +16,8 @@ conda activate geot_env
 pip install .
 ```
 
+If you have Cuda available, make sure to install [torch](https://pytorch.org/get-started/locally/) with GPU support instead. 
+
 ## Tutorial
 
 Check out our [tutorial](tutorial.ipynb) to get started with a simple example.
