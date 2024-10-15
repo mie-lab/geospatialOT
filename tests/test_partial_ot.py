@@ -16,7 +16,10 @@ test_cdist = np.array(
 
 
 class TestPartialOT:
+    """Test main class for partial OR"""
+
     def test_zero_for_same_mass(self):
+        """Test OT error being zero for same distributions"""
         ot_obj = PartialOT(test_cdist, entropy_regularized=False)
         ot_error = ot_obj(
             # torch.tensor([[1, 3, 2, 4], [1, 3, 2, 4]]),
@@ -27,6 +30,7 @@ class TestPartialOT:
         assert ot_error == 0
 
     def test_value_correct(self):
+        """Test OT error being correct for hard-coded example"""
         ot_obj = PartialOT(test_cdist, entropy_regularized=False)
         ot_error = ot_obj(
             torch.tensor([[1, 2, 3, 4]]),

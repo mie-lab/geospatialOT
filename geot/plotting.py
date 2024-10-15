@@ -9,9 +9,11 @@ def plot_cost_matrix(cost_matrix):
     Args:
         cost_matrix (np.array): 2D array of shape (M, N) with the pairwise costs between M and N locations
     """
+    assert cost_matrix.ndim == 2, "Cost matrix must be 2D"
+    m, n = cost_matrix.shape
     plt.imshow(cost_matrix)
-    plt.xlabel("Locations 1-100")
-    plt.ylabel("Locations 1-100")
+    plt.xlabel(f"Locations 1-{m}")
+    plt.ylabel(f"Locations 1-{n}")
     plt.colorbar(label="Cost")
     plt.xticks([])
     plt.yticks([])

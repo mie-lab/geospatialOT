@@ -10,8 +10,8 @@ NONZERO_FACTOR = 1e-5
 class SinkhornLoss:
     def __init__(
         self,
-        C,
-        normalize_c=True,
+        cost_matrix,
+        normalize_cost=True,
         spatiotemporal=False,
         blur=0.1,
         reach=0.01,
@@ -19,29 +19,56 @@ class SinkhornLoss:
         mode="unbalanced",
         **sinkhorn_kwargs,
     ):
+        """Initialize Sinkhorn loss to train NN with OT loss
+
+        Args:
+            cost_matrix (np.ndarray): 2-dim numpy array with pairwise costs
+                between locations
+            normalize_cost (bool): Whether to normalize cost matrix by dividing
+                by the maximum cost.
+            spatiotemporal (bool): Set to True to compute the error for spatio-
+                temporal data (across space and time)
+            blur (float, optional): typical scale associated to the temperature.
+                Defaults to 0.1. See
+                https://www.kernel-operations.io/geomloss/api/pytorch-api.html.
+            reach (float, optional): specifies the typical scale associated to
+                the constraint strength. Defaults to 0.01. See
+                https://www.kernel-operations.io/geomloss/api/pytorch-api.html.
+            scaling (float, optional): _description_. Defaults to 0.1.
+                https://www.kernel-operations.io/geomloss/api/pytorch-api.html.
+            mode (str, optional): How prediction and gt are normalized.
+                if mode=unbalanced: pred and gt have different mass
+                if mode=balancedSoftmax: pred is softmaxed, gt is normalized
+                if mode=balanced: pred and gt are both normalized to sum 1
+                Defaults to "unbalanced".
+        """
         assert mode in ["unbalanced", "balancedSoftmax", "balanced"]
         self.mode = mode
         self.spatiotemporal = spatiotemporal
         # adapt cost matrix type and size
-        if isinstance(C, np.ndarray):
-            C = torch.from_numpy(C)
+        if isinstance(cost_matrix, np.ndarray):
+            cost_matrix = torch.from_numpy(cost_matrix)
         # normalize to values betwen 0 and 1
-        if normalize_c:
-            C = C / torch.max(C)
-        if C.dim() != 3:
-            if C.dim() != 2:
-                raise ValueError("cost matrix C must have 2 or 3 dimensions")
-            C = C.unsqueeze(0)
+        if normalize_cost:
+            cost_matrix = cost_matrix / torch.max(cost_matrix)
+        if cost_matrix.dim() != 3:
+            if cost_matrix.dim() != 2:
+                raise ValueError(
+                    "cost matrix cost_matrix must have 2 or 3 dimensions"
+                )
+            cost_matrix = cost_matrix.unsqueeze(0)
 
         # cost matrics and locs both need a static representation and are
         # modified later to match the batch size
-        self.cost_matrix = C.to(device)
+        self.cost_matrix = cost_matrix.to(device)
         self.cost_matrix_original = self.cost_matrix.clone()
+
+        # introduce dummy weights since we assume fixed locations
         self.dummy_weights_alpha = torch.tensor(
-            [[[i] for i in range(C.size()[-2])]]
+            [[[i] for i in range(cost_matrix.size()[-2])]]
         ).float()
         self.dummy_weights_beta = torch.tensor(
-            [[[i] for i in range(C.size()[-1])]]
+            [[[i] for i in range(cost_matrix.size()[-1])]]
         ).float()
         self.dummy_weights_a = self.dummy_weights_alpha.clone()
         self.dummy_weights_b = self.dummy_weights_beta.clone()
@@ -120,15 +147,17 @@ class SinkhornLoss:
 
 
 class CombinedLoss:
-    def __init__(self, C, mode="balancedSoftmax", spatiotemporal=False) -> None:
+    def __init__(
+        self, cost_matrix, mode="balancedSoftmax", spatiotemporal=False
+    ) -> None:
         self.standard_mse = MSELoss()
         if spatiotemporal:
             self.sinkhorn_error = SinkhornLoss(
-                C, mode=mode, spatiotemporal=True
+                cost_matrix, mode=mode, spatiotemporal=True
             )
             self.dist_weight = 100
         else:
-            self.sinkhorn_error = SinkhornLoss(C, mode=mode)
+            self.sinkhorn_error = SinkhornLoss(cost_matrix, mode=mode)
             self.dist_weight = 10
 
     def __call__(self, a_in, b_in):

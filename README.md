@@ -1,4 +1,5 @@
 [![Paper](https://img.shields.io/badge/paper-arXiv-brightgreen)](https://s3.us-east-1.amazonaws.com/climate-change-ai/papers/iclr2024/41/paper.pdf)
+![Tests](https://github.com/mie-lab/geospatialOT/actions/workflows/python-tests.yml/badge.svg)
 
 # GEOT: Optimal transport for evaluating geospatial predictions
 

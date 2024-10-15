@@ -13,7 +13,7 @@ class PartialOT:
         penalty_waste="max",
         normalize_cost: bool = True,
         normalize_distribution: bool = False,
-        entropy_regularized: bool = True,
+        entropy_regularized: bool = False,
         spatiotemporal: bool = False,
     ):
         """
@@ -71,6 +71,15 @@ class PartialOT:
         return array
 
     def __call__(self, y_pred, y_true):
+        """Compute OT error between y_pred and y_true
+
+        Args:
+            y_pred: array or tensor with predictions. Shape (batch_size, N)
+            y_true: array or tensor with predictions. Shape (batch_size, N)
+
+        Returns:
+            float: Optimal transport distance between the two distributions
+        """
         y_pred, y_true = self.to_tensor(y_pred), self.to_tensor(y_true)
         # convert to arrays
         # compute mass that has to be imported or exported
@@ -111,14 +120,24 @@ class PartialOT:
             return cost
 
 
-def partial_ot_fixed_locations(
+def partial_ot_paired(
     cost_matrix: np.ndarray,
-    predictions: np.ndarray,
+    y_pred: np.ndarray,
     y_true: np.ndarray,
     **kwargs_partialot,
 ):
+    """Compute OT error between y_pred and y_true
+
+    Args:
+        cost_matrix: 2-dim numpy array with pairwise costs between locations
+        y_pred: array or tensor with predictions. Shape (batch_size, N)
+        y_true: array or tensor with predictions. Shape (batch_size, N)
+
+    Returns:
+        float: Optimal transport distance between the two distributions
+    """
     pot_obj = PartialOT(cost_matrix, **kwargs_partialot)
-    return pot_obj(torch.from_numpy(predictions), torch.from_numpy(y_true))
+    return pot_obj(torch.from_numpy(y_pred), torch.from_numpy(y_true))
 
 
 def partial_ot_unpaired(
@@ -126,9 +145,27 @@ def partial_ot_unpaired(
     locations_gt: np.ndarray,
     cost_matrix=None,
     import_location=np.array([0, 0]),
-    import_cost_phi=0,
+    penalty_waste=0,
     return_matrix=False,
 ):
+    """_summary_
+
+    Args:
+        locations_pred (np.ndarray): Predicted locations (array of shape (N, d))
+        locations_gt (np.ndarray): Ground true locations (array of shape (M, d))
+        cost_matrix (np.ndarray, optional): Pairwise costs between locations.
+            If None, Euclidean distances are used. Defaults to None.
+        import_location (np.ndarray, optional): Location for importing and
+            exporting mass. Can be set by appliction, e.g. bike sharing
+            distribution center Defaults to np.array([0, 0]).
+        penalty_waste (float or "max"): How much to penalize "waste vector",
+                i.e. mass export and import. Either y_pred float value, or "max"
+                corresponding to the maximum cost in cost_matrix. Defaults to 0.
+        return_matrix (bool, optional): _description_. Defaults to False.
+
+    Returns:
+        float: Optimal transport distance between the two distributions
+    """
     # extend the shorter one with import / export coords
     len_diff = len(locations_pred) - len(locations_gt)
     fill_vector = np.expand_dims(import_location, 0).repeat(len_diff, axis=0)
@@ -148,9 +185,9 @@ def partial_ot_unpaired(
     if cost_matrix is None:
         cost_matrix = cdist(locations_pred_ext, locations_gt_ext)
         if len_diff < 0:
-            cost_matrix[-len_diff:, :] = import_cost_phi
+            cost_matrix[-len_diff:, :] = penalty_waste
         else:
-            cost_matrix[:, -len_diff:] = import_cost_phi
+            cost_matrix[:, -len_diff:] = penalty_waste
 
     transport_matrix = ot.emd(weights_pred, weights_gt, cost_matrix)
     ot_distance = np.sum(transport_matrix * cost_matrix)
