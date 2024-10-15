@@ -11,7 +11,6 @@ class PartialOT:
         cost_matrix: np.ndarray,
         penalty_waste="max",
         normalize_cost: bool = False,
-        normalize_distribution: bool = False,
         entropy_regularized: bool = False,
         spatiotemporal: bool = False,
     ):
@@ -25,16 +24,12 @@ class PartialOT:
                 corresponding to the maximum cost in cost_matrix
             normalize_cost (bool): Whether to normalize cost matrix by dividing
                 by the maximum cost.
-            normalize_distribution (bool): Whether to compute the Wasserstein
-                distance between distributions (True) or the actual value range.
-                Defaults to False
             entropy_regularized (bool): Set to True for using Sinkhorn loss,i.e.
                 entropy-regularized OT. By default using Wasserstein distance.
             spatiotemporal (bool): Set to True to compute the error for spatio
                 temporal data (across space and time)
         """
         self.entropy_regularized = entropy_regularized
-        self.normalize_distribution = normalize_distribution
         if penalty_waste == "max":
             penalty_waste = np.max(cost_matrix)
 
@@ -59,6 +54,9 @@ class PartialOT:
                 spatiotemporal=spatiotemporal,
             )
         else:
+            assert (
+                not spatiotemporal
+            ), "Can only use spatiotemporal with entropy regularized OT"
             self.cost_matrix = extended_cost_matrix
 
     def to_tensor(self, array):
