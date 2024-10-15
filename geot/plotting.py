@@ -1,8 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+
+plt.rcParams.update({"font.size": 13})
 
 
-def plot_cost_matrix(cost_matrix):
+def plot_cost_matrix(cost_matrix, title="Cost matrix", label="Cost"):
     """
     Plot the cost matrix as a heatmap
 
@@ -14,10 +17,10 @@ def plot_cost_matrix(cost_matrix):
     plt.imshow(cost_matrix)
     plt.xlabel(f"Locations 1-{m}")
     plt.ylabel(f"Locations 1-{n}")
-    plt.colorbar(label="Cost")
+    plt.colorbar(label=label)
     plt.xticks([])
     plt.yticks([])
-    plt.title("Cost matrix")
+    plt.title(title)
     plt.show()
 
 
@@ -50,6 +53,126 @@ def plot_predictions_and_ground_truth(locations, predictions, observations):
     plt.xlabel("X coordinate")
     plt.ylabel("Y coordinate")
     plt.title("Residuals (predictions - observations)")
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_paired_transport_matrix(
+    locations, predictions, observations, ot_matrix
+):
+    """
+    Plot the transport matrix as arrows between predicted and true spatial
+    distribution.
+
+    Args:
+        locations (np.array): 2D array of shape (N, 2), the locations
+            (same locations for gt and preds)
+        predictions (np.array): array of shape (N), the predictions
+        observations (np.array): array of shape (N), the observations
+        transport_matrix (np.array): 2D array of shape (N+1, N+1), the optimal
+            transport matrix between the predicted and true spatial distribution
+            (+1 for the waste vector)
+    """
+    head_width = 0.02 * np.mean(
+        np.linalg.norm(
+            locations - locations[np.random.permutation(len(locations))],
+            axis=1,
+        )
+    )
+    # get lists of indices for start and end stations
+    start_station_id, end_station_id = np.where(ot_matrix[:-1, :-1] > 0)
+    start_coords, end_coords = (
+        locations[start_station_id],
+        locations[end_station_id],
+    )
+
+    errors = np.abs(predictions - observations)
+    residuals = predictions - observations
+
+    def get_col(val):
+        # one col for correct, one for over, one for under estimation
+        if val < 0:
+            return "purple"
+        elif val == 0:
+            return "green"
+        else:
+            return "orange"
+
+    cols = [get_col(val) for val in residuals]
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    for (x1, y1), (x2, y2) in zip(start_coords, end_coords):
+        plt.arrow(
+            x1,
+            y1,
+            x2 - x1,
+            y2 - y1,
+            head_width=head_width,
+            length_includes_head=True,
+            overhang=1,
+            alpha=0.5,
+        )
+    plt.scatter(
+        locations[:, 0], locations[:, 1], s=errors * 100 + 10, c=cols, alpha=0.5
+    )
+    plt.xlabel("X coordinate")
+    plt.ylabel("Y coordinate")
+    legend_elements = [
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="green",
+            lw=0,
+            markerfacecolor="g",
+            markersize=7,
+            label="Correct",
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="orange",
+            lw=0,
+            label="Prediction > GT",
+            markerfacecolor="orange",
+            markersize=7,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="purple",
+            lw=0,
+            label="GT > Prediction",
+            markerfacecolor="purple",
+            markersize=7,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="black",
+            lw=0,
+            label="High error",
+            markerfacecolor="black",
+            markersize=15,
+        ),
+        Line2D(
+            [0],
+            [0],
+            marker="o",
+            color="black",
+            lw=0,
+            label="Low error",
+            markerfacecolor="black",
+            markersize=3,
+        ),
+        Line2D([0], [0], color="black", lw=2, label="Transported mass"),
+    ]
+
+    # Create the figure
+    ax.legend(handles=legend_elements, bbox_to_anchor=(1, 1))
     plt.tight_layout()
     plt.show()
 

@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import wasserstein
 from scipy.spatial.distance import cdist
 import ot
 from geot.sinkhorn_loss import SinkhornLoss
@@ -11,7 +10,7 @@ class PartialOT:
         self,
         cost_matrix: np.ndarray,
         penalty_waste="max",
-        normalize_cost: bool = True,
+        normalize_cost: bool = False,
         normalize_distribution: bool = False,
         entropy_regularized: bool = False,
         spatiotemporal: bool = False,
@@ -61,7 +60,6 @@ class PartialOT:
             )
         else:
             self.cost_matrix = extended_cost_matrix
-            self.wasserstein_object = wasserstein.EMD()
 
     def to_tensor(self, array):
         if isinstance(array, np.ndarray):
@@ -70,16 +68,22 @@ class PartialOT:
             array = array.unsqueeze(0)
         return array
 
-    def __call__(self, y_pred, y_true):
+    def __call__(self, y_pred, y_true, return_matrix=False):
         """Compute OT error between y_pred and y_true
 
         Args:
             y_pred: array or tensor with predictions. Shape (batch_size, N)
             y_true: array or tensor with predictions. Shape (batch_size, N)
+            return_matrix (bool, optional): Whether to output the OT matrix.
+                Defaults to False.
 
         Returns:
             float: Optimal transport distance between the two distributions
         """
+        if return_matrix:
+            assert (
+                not self.entropy_regularized
+            ), "Cannot return matrix for Sinkhorn"
         y_pred, y_true = self.to_tensor(y_pred), self.to_tensor(y_true)
         # convert to arrays
         # compute mass that has to be imported or exported
@@ -95,35 +99,44 @@ class PartialOT:
 
         if self.entropy_regularized:
             return self.sinkhorn_object(extended_pred, extended_true)
-        else:
-            assert (
-                y_pred.size()[0] == 1
-                and y_true.size()[0] == 1
-                and y_pred.dim() == 2
-            )
-            extended_pred_np = (
-                extended_pred.squeeze().detach().numpy().astype(float)
-            )
-            extended_true_np = (
-                extended_true.squeeze().detach().numpy().astype(float)
-            )
-            # Note: extended_pred_np and extended_true_np already have the same sum
-            # We still need this normalization to avoid numeric errors
-            extended_pred_np = (
-                extended_pred_np
-                / np.sum(extended_pred_np)
-                * np.sum(extended_true_np)
-            )
-            cost = self.wasserstein_object(
+
+        assert torch.all(y_pred >= 0) and torch.all(
+            y_true >= 0
+        ), "y_pred or y_true cannot be negative"
+        # compute exact OT error with Wasserstein package
+        assert (
+            y_pred.size()[0] == 1
+            and y_true.size()[0] == 1
+            and y_pred.dim() == 2
+        )
+        extended_pred_np = (
+            extended_pred.squeeze().detach().numpy().astype(float)
+        )
+        extended_true_np = (
+            extended_true.squeeze().detach().numpy().astype(float)
+        )
+        # Note: extended_pred_np and extended_true_np already have the same sum
+        # We still need this normalization to avoid numeric errors
+        extended_pred_np = (
+            extended_pred_np
+            / np.sum(extended_pred_np)
+            * np.sum(extended_true_np)
+        )
+        if return_matrix:
+            transport_matrix = ot.emd(
                 extended_pred_np, extended_true_np, self.cost_matrix
             )
-            return cost
+            return transport_matrix
+
+        cost = ot.emd2(extended_pred_np, extended_true_np, self.cost_matrix)
+        return cost
 
 
 def partial_ot_paired(
     cost_matrix: np.ndarray,
     y_pred: np.ndarray,
     y_true: np.ndarray,
+    return_matrix: bool = False,
     **kwargs_partialot,
 ):
     """Compute OT error between y_pred and y_true
@@ -132,12 +145,18 @@ def partial_ot_paired(
         cost_matrix: 2-dim numpy array with pairwise costs between locations
         y_pred: array or tensor with predictions. Shape (batch_size, N)
         y_true: array or tensor with predictions. Shape (batch_size, N)
+        return_matrix (bool, optional): Whether to output the OT matrix.
+            Defaults to False.
 
     Returns:
         float: Optimal transport distance between the two distributions
     """
     pot_obj = PartialOT(cost_matrix, **kwargs_partialot)
-    return pot_obj(torch.from_numpy(y_pred), torch.from_numpy(y_true))
+    return pot_obj(
+        torch.from_numpy(y_pred),
+        torch.from_numpy(y_true),
+        return_matrix=return_matrix,
+    )
 
 
 def partial_ot_unpaired(
@@ -161,7 +180,8 @@ def partial_ot_unpaired(
         penalty_waste (float or "max"): How much to penalize "waste vector",
                 i.e. mass export and import. Either y_pred float value, or "max"
                 corresponding to the maximum cost in cost_matrix. Defaults to 0.
-        return_matrix (bool, optional): _description_. Defaults to False.
+        return_matrix (bool, optional): Whether to output the OT matrix.
+            Defaults to False.
 
     Returns:
         float: Optimal transport distance between the two distributions
