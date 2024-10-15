@@ -1,3 +1,5 @@
+[![Paper](https://img.shields.io/badge/paper-arXiv-brightgreen)](https://s3.us-east-1.amazonaws.com/climate-change-ai/papers/iclr2024/41/paper.pdf)
+
 # GEOT: Optimal transport for evaluating geospatial predictions
 
 This repo contains easy-to-use code for evaluating spatiotemporal predictions with Optimal Transport. Assumptions:
