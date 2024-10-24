@@ -1,7 +1,7 @@
 [![Paper](https://img.shields.io/badge/paper-arXiv-brightgreen)](https://s3.us-east-1.amazonaws.com/climate-change-ai/papers/iclr2024/41/paper.pdf)
 ![Tests](https://github.com/mie-lab/geospatialOT/actions/workflows/python-tests.yml/badge.svg)
 
-# GEOT: Optimal transport for evaluating geospatial predictions
+# GEOT: A spatially explicit framework for evaluating spatio-temporal predictions
 
 This repo contains code to evaluate spatiotemporal predictions with Optimal Transport (OT). In contrast to standard evaluation metrics (MSE, MAE etc), the OT error is a *spatial* metric that evaluates the spatial distribution of the errors.
 
