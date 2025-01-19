@@ -15,7 +15,7 @@ Install the package via pypi:
 pip install geot
 ```
 
-You might have to install a suitable [torch](https://pytorch.org/get-started/locally/) version first. Then, i. If you want to use Optimal Transport as a loss function for training a DL model, make sure to install torch for cuda.
+You might have to install a suitable [torch](https://pytorch.org/get-started/locally/) version first. If you want to use Optimal Transport as a loss function for training a DL model, make sure to install torch for cuda.
  
 Alternatively, install from source:
 ```
@@ -28,13 +28,26 @@ pip install .
 
 ## Tutorial
 
-Check out our [tutorial](tutorial.ipynb) to get started with a simple example.
+Check out our [tutorial](tutorial.ipynb) to get started with simple examples. 
 
-Explanation of usage:
-* Assume we want to predict some observations in several locations, e.g., bike sharing demand at bike sharing stations, over time
-* Usually, the error is just averaged over locations (MSE between GT and prediction)
-* However, in real-world applications, there are distance-based costs involved with prediction errors. For example, prediction errors cause costs for relocating bikes
-* Assue we can define a *cost matrix* with the pairwise costs between locations, indicating the cost to account for errors
-* With Optimal Transport, we can compute the minimum costs for transforming the predictions to the ground truth - a better indicator for the real-world costs of prediction errors than just the MSE
+#### Further explanations:
 
-With this code, you can compute the OT error for your predictions. The input is usually just the `observations` at a set of location, the `predictions` and the `cost matrix`. The output is the OT error (a single number) or the optimal transport matrix T.
+What is the goal?
+* Evaluate and compare ML models for geospatial prediction tasks
+* Assess their *spatial* goodness - measuring how well their predictions match the spatial distribution of the ground truth (standard metrics, e.g. MSE, ignore the spatial location; usually just the average error across locations is reported)
+
+How does it work?
+* The difference between the spatial distribution of the ground truth observations and the predicted spatial distribution is measured using Optimal Transport, i.e., the **Wasserstein Distance** or Earth Mover's Distance (EMD)
+* For a simple explanation, check out the [EMD between signatures](https://en.wikipedia.org/wiki/Earth_mover%27s_distance#EMD_between_signatures). Our method is based on *discrete* OT, where the *sample points* are spatial locations and the *mass* at these points are the observations or predictions. OT finds the *minimal cost transportation matrix*, i.e. the mass that must be transported between each pair of locations to align the predicted with the observed distribution.
+* In practice, we provide an interface to other OT python packages for the specific use case on geospatial data. Here, the input is usually just the `observations` at a set of location, the `predictions` and the `cost matrix`. The output is the OT error (a single number) or the optimal transport matrix T.
+* Apart from evaluation, OT can be used as a loss function via the Sinkhorn loss. 
+
+What are typical use cases?
+* This method is relevant any application where the spatial distribution of the prediction errors matters.
+* Typical examples are applications where prediction errors are associated with relocation or reallocation costs. For example, errors in bike sharing demand prediction lead to users relocating to another station that is further away, etc
+* Further examples: predicting wildfire spread or glacier retreat, forecasting weather or traffic, estimating poverty or crime rates, etc.
+
+How to use your own data?
+* The tutorial notebook provides examples using random values. You can adapt the code to use your own data by replacing the variables such as `locations`, `observations`, `predictions` and `cost_matrix`.
+* If you have trouble, open an issue or get in touch!
+

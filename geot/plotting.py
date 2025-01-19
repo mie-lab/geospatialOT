@@ -57,9 +57,7 @@ def plot_predictions_and_ground_truth(locations, predictions, observations):
     plt.show()
 
 
-def plot_paired_transport_matrix(
-    locations, predictions, observations, ot_matrix
-):
+def plot_paired_transport_matrix(locations, predictions, observations, ot_matrix):
     """
     Plot the transport matrix as arrows between predicted and true spatial
     distribution.
@@ -194,14 +192,11 @@ def plot_unpaired_transport_matrix(
         predicted_locations[:, 1],
         label="predicted locations",
     )
-    plt.scatter(
-        true_locations[:, 0], true_locations[:, 1], label="true locations"
-    )
+    plt.scatter(true_locations[:, 0], true_locations[:, 1], label="true locations")
     # compute suitable head with for the errors based on the scale
     head_with = 0.02 * np.mean(
         np.linalg.norm(
-            true_locations
-            - true_locations[np.random.permutation(len(true_locations))],
+            true_locations - true_locations[np.random.permutation(len(true_locations))],
             axis=1,
         )
     )
