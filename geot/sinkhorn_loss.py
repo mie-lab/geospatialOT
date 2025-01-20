@@ -53,9 +53,7 @@ class SinkhornLoss:
             cost_matrix = cost_matrix / torch.max(cost_matrix)
         if cost_matrix.dim() != 3:
             if cost_matrix.dim() != 2:
-                raise ValueError(
-                    "cost matrix cost_matrix must have 2 or 3 dimensions"
-                )
+                raise ValueError("cost matrix cost_matrix must have 2 or 3 dimensions")
             cost_matrix = cost_matrix.unsqueeze(0)
 
         # cost matrics and locs both need a static representation and are
@@ -90,15 +88,9 @@ class SinkhornLoss:
 
     def adapt_to_batchsize(self, batch_size):
         if self.cost_matrix.size()[0] != batch_size:
-            self.cost_matrix = self.cost_matrix_original.repeat(
-                (batch_size, 1, 1)
-            )
-            self.dummy_weights_a = self.dummy_weights_alpha.repeat(
-                (batch_size, 1, 1)
-            )
-            self.dummy_weights_b = self.dummy_weights_beta.repeat(
-                (batch_size, 1, 1)
-            )
+            self.cost_matrix = self.cost_matrix_original.repeat((batch_size, 1, 1))
+            self.dummy_weights_a = self.dummy_weights_alpha.repeat((batch_size, 1, 1))
+            self.dummy_weights_b = self.dummy_weights_beta.repeat((batch_size, 1, 1))
 
     def __call__(self, a_in, b_in):
         """a_in: predictions, b_in: targets"""
@@ -120,11 +112,7 @@ class SinkhornLoss:
         # 2) flatten one axis -> either for spatiotemporal OT or treating the
         # temporal axis as batch
         batch_size = a.size()[0]
-        if self.spatiotemporal:
-            # flatten space-time axes
-            a = a.reshape((batch_size, -1))
-            b = b.reshape((batch_size, -1))
-        elif a.dim() == 3:
+        if a.dim() == 3:
             # if we have to flatten at all, flatten time over the batch size
             steps_ahead = a.size()[1]
             a = a.reshape((batch_size * steps_ahead, -1))
@@ -140,13 +128,15 @@ class SinkhornLoss:
             a = a / torch.unsqueeze(torch.sum(a, dim=-1), -1)
             b = b / torch.unsqueeze(torch.sum(b, dim=-1), -1)
 
-        loss = self.loss_object(
-            a, self.dummy_weights_a, b, self.dummy_weights_b
-        )
+        loss = self.loss_object(a, self.dummy_weights_a, b, self.dummy_weights_b)
         return torch.sum(loss)
 
 
 class CombinedLoss:
+    """
+    Combine Sinkhorn Loss and simple MSE
+    """
+
     def __init__(
         self, cost_matrix, mode="balancedSoftmax", spatiotemporal=False
     ) -> None:
@@ -161,13 +151,8 @@ class CombinedLoss:
             self.dist_weight = 10
 
     def __call__(self, a_in, b_in):
-        # compute the error between the mean of predicted and mean of gt demand
-        # this is the overall demand per timestep per batch
-        # total_mse = (torch.mean(a_in, dim=-1) - torch.mean(b_in, dim=-1)) ** 2
-        # take the average of the demand divergence over batch & timestep
-        # mse_loss = torch.mean(total_mse)
+        # compute MSE and Sinkhorn loss
         mse_loss = self.standard_mse(a_in, b_in)
-        # mse_loss = self.standard_mse(a_in, b_in)
         sink_loss = self.sinkhorn_error(a_in, b_in)
         # for checking calibration of weighting
         # print(mse_loss, self.dist_weight * sink_loss)

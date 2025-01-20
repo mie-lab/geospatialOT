@@ -30,6 +30,7 @@ class PartialOT:
                 temporal data (across space and time)
         """
         self.entropy_regularized = entropy_regularized
+        self.spatiotemporal = spatiotemporal
         if penalty_waste == "max":
             penalty_waste = np.max(cost_matrix)
 
@@ -41,9 +42,7 @@ class PartialOT:
         extended_cost_matrix[:, cwid] = penalty_waste
 
         if normalize_cost:
-            extended_cost_matrix = extended_cost_matrix / np.max(
-                extended_cost_matrix
-            )
+            extended_cost_matrix = extended_cost_matrix / np.max(extended_cost_matrix)
         if entropy_regularized:
             self.sinkhorn_object = SinkhornLoss(
                 extended_cost_matrix,
@@ -54,15 +53,12 @@ class PartialOT:
                 spatiotemporal=spatiotemporal,
             )
         else:
-            assert (
-                not spatiotemporal
-            ), "Can only use spatiotemporal with entropy regularized OT"
             self.cost_matrix = extended_cost_matrix
 
     def to_tensor(self, array):
         if isinstance(array, np.ndarray):
             array = torch.from_numpy(array)
-        if array.dim() == 1:
+        if array.dim() == 1 or (self.spatiotemporal and (array.dim() == 2)):
             array = array.unsqueeze(0)
         return array
 
@@ -79,15 +75,23 @@ class PartialOT:
             float: Optimal transport distance between the two distributions
         """
         if return_matrix:
-            assert (
-                not self.entropy_regularized
-            ), "Cannot return matrix for Sinkhorn"
+            assert not self.entropy_regularized, "Cannot return matrix for Sinkhorn"
         y_pred, y_true = self.to_tensor(y_pred), self.to_tensor(y_true)
+
+        if self.spatiotemporal:
+            batch_size = y_pred.size()[0]
+            # flatten space-time axes
+            y_pred = y_pred.reshape((batch_size, -1))
+            y_true = y_true.reshape((batch_size, -1))
+        else:
+            assert (
+                y_pred.dim() == 2 and y_true.dim() == 2
+            ), f"a and b must be two-dimensional (or 3-dim if spatiotemporal)\
+            , here dims are {y_pred.dim()} and {y_true.dim()}"
+
         # convert to arrays
         # compute mass that has to be imported or exported
-        diff = (
-            torch.sum(y_pred, dim=-1) - torch.sum(y_true, dim=-1)
-        ).unsqueeze(-1)
+        diff = (torch.sum(y_pred, dim=-1) - torch.sum(y_true, dim=-1)).unsqueeze(-1)
         diff_pos = torch.relu(diff)
         diff_neg = torch.relu(diff * -1)
 
@@ -103,22 +107,14 @@ class PartialOT:
         ), "y_pred or y_true cannot be negative"
         # compute exact OT error with Wasserstein package
         assert (
-            y_pred.size()[0] == 1
-            and y_true.size()[0] == 1
-            and y_pred.dim() == 2
-        )
-        extended_pred_np = (
-            extended_pred.squeeze().detach().numpy().astype(float)
-        )
-        extended_true_np = (
-            extended_true.squeeze().detach().numpy().astype(float)
-        )
+            y_pred.size()[0] == 1 and y_true.size()[0] == 1
+        ), "batching not possible in exact computation"
+        extended_pred_np = extended_pred.squeeze().detach().numpy().astype(float)
+        extended_true_np = extended_true.squeeze().detach().numpy().astype(float)
         # Note: extended_pred_np and extended_true_np already have the same sum
         # We still need this normalization to avoid numeric errors
         extended_pred_np = (
-            extended_pred_np
-            / np.sum(extended_pred_np)
-            * np.sum(extended_true_np)
+            extended_pred_np / np.sum(extended_pred_np) * np.sum(extended_true_np)
         )
         if return_matrix:
             transport_matrix = ot.emd(
