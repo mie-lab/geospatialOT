@@ -83,7 +83,7 @@ class PartialOT:
             # flatten space-time axes
             y_pred = y_pred.reshape((batch_size, -1))
             y_true = y_true.reshape((batch_size, -1))
-        else:
+        elif not self.entropy_regularized:
             assert (
                 y_pred.dim() == 2 and y_true.dim() == 2
             ), f"a and b must be two-dimensional (or 3-dim if spatiotemporal)\

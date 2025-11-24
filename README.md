@@ -1,4 +1,4 @@
-[![Paper](https://img.shields.io/badge/paper-arXiv-brightgreen)](https://s3.us-east-1.amazonaws.com/climate-change-ai/papers/iclr2024/41/paper.pdf)
+[![Paper](https://img.shields.io/badge/paper-IJGIS-brightgreen)](https://www.tandfonline.com/doi/full/10.1080/13658816.2025.2481101)
 ![Tests](https://github.com/mie-lab/geospatialOT/actions/workflows/python-tests.yml/badge.svg)
 
 # GEOT: A spatially explicit framework for evaluating spatio-temporal predictions
@@ -51,3 +51,17 @@ How to use your own data?
 * The tutorial notebook provides examples using random values. You can adapt the code to use your own data by replacing the variables such as `locations`, `observations`, `predictions` and `cost_matrix`.
 * If you have trouble, open an issue or get in touch!
 
+## Citation
+
+If you use our work, please cite:
+
+```bib
+@article{wiedemann2025geot,
+  title={GeOT: a spatially explicit framework for evaluating spatio-temporal predictions},
+  author={Wiedemann, Nina and Uscidda, Th{\'e}o and Raubal, Martin},
+  journal={International Journal of Geographical Information Science},
+  pages={1--31},
+  year={2025},
+  publisher={Taylor \& Francis}
+}
+```
